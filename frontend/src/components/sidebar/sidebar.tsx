@@ -7,6 +7,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { useConversations, useCreateConversation } from "@/hooks/use-conversations";
 import { ConversationList } from "./conversation-list";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { UserMenu } from "./user-menu";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import type { ConversationListItem } from "@chatbot/shared";
 
@@ -149,8 +150,11 @@ function SidebarContent({
           Documents
         </a>
       </div>
-      <div className="border-t p-3">
-        <ThemeToggle />
+      <div className="border-t p-2">
+        <div className="flex items-center justify-between">
+          <UserMenu />
+          <ThemeToggle />
+        </div>
       </div>
     </>
   );
