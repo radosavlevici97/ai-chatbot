@@ -37,18 +37,11 @@ COPY --from=builder /app/production/package.json ./
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/drizzle ./drizzle
 
-# Create data directory (Railway Volume mounts over this)
-RUN mkdir -p /data/uploads /data/chroma
-
-# Use built-in node user (UID 1000) — works with Railway volume mounts
-RUN chown -R node:node /app /data
-USER node
-
 EXPOSE 8000
 
-# Health check — Railway also uses healthcheckPath but this is a Docker-native fallback
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8000/api/v1/health || exit 1
 
-# Entrypoint: ensure /data dirs exist and are writable (volume may mount as root)
+# Ensure /data dirs exist at runtime (Railway volume mounts as root at startup)
 CMD ["sh", "-c", "mkdir -p /data/uploads /data/chroma && node dist/index.js"]
