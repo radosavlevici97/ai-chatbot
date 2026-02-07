@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+.env.*
+*.db
+*.db-wal
+*.db-shm
+data/
+.git
+.gitignore
+*.md
+tests/
+**/*.test.ts
+**/*.spec.ts
+.vscode
+.idea
