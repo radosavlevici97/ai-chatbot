@@ -40,10 +40,9 @@ COPY --from=builder /app/backend/drizzle ./drizzle
 # Create data directory (Railway Volume mounts over this)
 RUN mkdir -p /data/uploads /data/chroma
 
-# Non-root user for security
-RUN addgroup --system chatbot && adduser --system --ingroup chatbot chatbot
-RUN chown -R chatbot:chatbot /app /data
-USER chatbot
+# Use built-in node user (UID 1000) — works with Railway volume mounts
+RUN chown -R node:node /app /data
+USER node
 
 EXPOSE 8000
 
@@ -51,4 +50,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8000/api/v1/health || exit 1
 
-CMD ["node", "dist/index.js"]
+# Entrypoint: ensure /data dirs exist and are writable (volume may mount as root)
+CMD ["sh", "-c", "mkdir -p /data/uploads /data/chroma && node dist/index.js"]
