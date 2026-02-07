@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --version:*)",
+      "Bash(pnpm --version:*)",
+      "Bash(corepack --version:*)",
+      "Bash(npm:*)",
+      "Bash(nvm:*)",
+      "Bash(where:*)",
+      "Bash(npx:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm db:generate:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill -9)",
+      "Bash(fuser:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(node -e:*)",
+      "Bash(pnpm --filter @chatbot/frontend add:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(pnpm --filter @chatbot/backend add:*)",
+      "Bash(pnpm --filter @chatbot/shared build:*)",
+      "Bash(pnpm --filter @chatbot/backend build:*)",
+      "Bash(pnpm --filter @chatbot/frontend build:*)",
+      "WebFetch(domain:docs.trychroma.com)",
+      "WebFetch(domain:cookbook.chromadb.dev)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(pnpm:*)"
+    ]
+  }
+}
