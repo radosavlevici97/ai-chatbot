@@ -21,19 +21,29 @@ function parseDbMessages(messages: { id: string; role: string; content: string; 
 export default function ConversationPage() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading, error } = useConversation(id);
-  const { setConversation } = useChatStore();
+  const setConversation = useChatStore((s) => s.setConversation);
+  const storeConversationId = useChatStore((s) => s.conversationId);
+  const storeHasMessages = useChatStore((s) => s.messages.length > 0);
+
+  // True when NewChatPage already populated the store before navigating here
+  const storeIsPreloaded = storeConversationId === id && storeHasMessages;
 
   useEffect(() => {
     if (data) {
+      // Don't overwrite the store while it's actively streaming — the store
+      // already has the live messages managed by NewChatPage / ChatView.
+      const { isGenerating, conversationId } = useChatStore.getState();
+      if (isGenerating && conversationId === id) return;
+
       setConversation(id, parseDbMessages(data.messages));
     }
   }, [id, data, setConversation]);
 
-  if (isLoading) {
+  if (isLoading && !storeIsPreloaded) {
     return <ChatSkeleton />;
   }
 
-  if (error) {
+  if (error && !storeIsPreloaded) {
     return (
       <div className="flex flex-1 items-center justify-center text-destructive">
         Failed to load conversation. It may have been deleted.
