@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Plus, PanelLeftClose, PanelLeftOpen, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,11 @@ export function Sidebar() {
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
+
+  // Auto-close sidebar when transitioning to mobile viewport
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [isMobile, setSidebarOpen]);
 
   const {
     data,
