@@ -55,21 +55,29 @@ export async function createTokenPair(userId: string) {
 // ── Cookie Helpers ──────────────────────────────
 
 export function setAuthCookies(c: Context, accessToken: string, refreshToken: string) {
+  const secure = env.COOKIE_SECURE ? "Secure; " : "";
+  const sameSite = env.COOKIE_SECURE ? "None" : "Strict";
+  const domain = env.COOKIE_DOMAIN ? `Domain=${env.COOKIE_DOMAIN}; ` : "";
+
   c.header(
     "Set-Cookie",
-    `access_token=${accessToken}; Max-Age=${env.JWT_ACCESS_EXPIRE_MINUTES * 60}; HttpOnly; ${env.COOKIE_SECURE ? "Secure; " : ""}SameSite=Strict; Path=/api`,
+    `access_token=${accessToken}; Max-Age=${env.JWT_ACCESS_EXPIRE_MINUTES * 60}; HttpOnly; ${secure}${domain}SameSite=${sameSite}; Path=/`,
     { append: true },
   );
   c.header(
     "Set-Cookie",
-    `refresh_token=${refreshToken}; Max-Age=${env.JWT_REFRESH_EXPIRE_DAYS * 86400}; HttpOnly; ${env.COOKIE_SECURE ? "Secure; " : ""}SameSite=Strict; Path=/api/v1/auth/refresh`,
+    `refresh_token=${refreshToken}; Max-Age=${env.JWT_REFRESH_EXPIRE_DAYS * 86400}; HttpOnly; ${secure}${domain}SameSite=${sameSite}; Path=/`,
     { append: true },
   );
 }
 
 export function clearAuthCookies(c: Context) {
-  c.header("Set-Cookie", "access_token=; Max-Age=0; HttpOnly; Path=/api", { append: true });
-  c.header("Set-Cookie", "refresh_token=; Max-Age=0; HttpOnly; Path=/api/v1/auth/refresh", { append: true });
+  const secure = env.COOKIE_SECURE ? "Secure; " : "";
+  const sameSite = env.COOKIE_SECURE ? "None" : "Strict";
+  const domain = env.COOKIE_DOMAIN ? `Domain=${env.COOKIE_DOMAIN}; ` : "";
+
+  c.header("Set-Cookie", `access_token=; Max-Age=0; HttpOnly; ${secure}${domain}SameSite=${sameSite}; Path=/`, { append: true });
+  c.header("Set-Cookie", `refresh_token=; Max-Age=0; HttpOnly; ${secure}${domain}SameSite=${sameSite}; Path=/`, { append: true });
 }
 
 export function getAccessTokenFromCookie(c: Context): string | null {
