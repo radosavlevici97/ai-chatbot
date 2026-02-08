@@ -1,33 +1,30 @@
 import { create } from "zustand";
+import type { Attachment, MessageRole } from "@chatbot/shared";
 
-type Attachment = {
-  type: string;
-  storagePath: string;
-  mimeType: string;
-  size?: number;
-};
+export type Citation = { source: string; page: number; relevance: number };
 
-type Message = {
+export type ChatMessage = {
   id: string;
-  role: "user" | "assistant" | "system";
+  role: MessageRole;
   content: string;
   isStreaming?: boolean;
   createdAt: string;
-  citations?: { source: string; page: number; relevance: number }[];
+  citations?: Citation[];
   attachments?: Attachment[];
 };
 
 type ChatState = {
   conversationId: string | null;
-  messages: Message[];
+  messages: ChatMessage[];
   isGenerating: boolean;
   abortController: AbortController | null;
 
-  setConversation: (id: string, messages: Message[]) => void;
+  setConversation: (id: string, messages: ChatMessage[]) => void;
+  setConversationId: (id: string) => void;
   addUserMessage: (content: string, attachments?: Attachment[]) => void;
   startAssistantMessage: () => void;
   appendToken: (content: string) => void;
-  addCitation: (citation: { source: string; page: number; relevance: number }) => void;
+  addCitation: (citation: Citation) => void;
   finishGeneration: () => void;
   setAbortController: (controller: AbortController | null) => void;
   stopGeneration: () => void;
@@ -42,6 +39,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setConversation: (id, messages) =>
     set({ conversationId: id, messages, isGenerating: false, abortController: null }),
+
+  setConversationId: (id) => set({ conversationId: id }),
 
   addUserMessage: (content, attachments) =>
     set((state) => ({

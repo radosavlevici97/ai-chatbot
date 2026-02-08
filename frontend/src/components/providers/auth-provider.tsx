@@ -4,6 +4,7 @@ import { createContext, useContext } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
+import { setSessionCookie, clearSessionCookie } from "@/lib/session-cookie";
 import type { UserProfile, LoginInput, RegisterInput } from "@chatbot/shared";
 
 type AuthContext = {
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: (input: LoginInput) => api.post<{ user: UserProfile }>("/auth/login", input),
     onSuccess: (data) => {
+      setSessionCookie();
       queryClient.setQueryData(["auth", "me"], data.user);
       router.push("/");
     },
@@ -37,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const registerMutation = useMutation({
     mutationFn: (input: RegisterInput) => api.post<{ user: UserProfile }>("/auth/register", input),
     onSuccess: (data) => {
+      setSessionCookie();
       queryClient.setQueryData(["auth", "me"], data.user);
       router.push("/");
     },
@@ -45,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logoutMutation = useMutation({
     mutationFn: () => api.post("/auth/logout"),
     onSuccess: () => {
+      clearSessionCookie();
       queryClient.clear();
       router.push("/login");
     },

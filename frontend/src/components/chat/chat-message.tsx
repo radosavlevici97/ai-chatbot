@@ -1,21 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, API_BASE } from "@/lib/utils";
 import { Bot, User } from "lucide-react";
 import { CitationBadge } from "./citation-badge";
 import { ImageLightbox } from "./image-lightbox";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
-
-type Attachment = {
-  type: string;
-  storagePath: string;
-  mimeType: string;
-  size?: number;
-};
-
-type Citation = { source: string; page: number; relevance: number };
+import type { Attachment } from "@chatbot/shared";
+import type { Citation } from "@/stores/chat-store";
 
 type ChatMessageProps = {
   role: "user" | "assistant" | "system";
@@ -94,9 +85,7 @@ export function ChatMessage({ role, content, isStreaming, citations, attachments
               <ThinkingIndicator />
             ) : (
               <div className="break-words">
-                <p className="whitespace-pre-wrap">
-                  {content || "..."}
-                </p>
+                <p className="whitespace-pre-wrap">{content || "..."}</p>
                 {isStreaming && content && (
                   <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-current" />
                 )}
