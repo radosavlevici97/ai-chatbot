@@ -75,6 +75,7 @@ export function ConversationItem({ conversation, isActive }: Props) {
       <Link
         href={`/c/${conversation.id}`}
         className="flex flex-1 items-center gap-2 truncate"
+        aria-current={isActive ? "page" : undefined}
       >
         <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="truncate">

@@ -5,18 +5,8 @@ import { useConversation } from "@/hooks/use-conversations";
 import { useChatStore } from "@/stores/chat-store";
 import { ChatView } from "@/components/chat/chat-view";
 import { ChatSkeleton } from "@/components/chat/chat-skeleton";
+import { parseDbMessages } from "@/lib/message-utils";
 import { useEffect, useState } from "react";
-
-function parseDbMessages(messages: { id: string; role: string; content: string; createdAt: string; citations?: string; attachments?: string }[]) {
-  return messages.map((m) => ({
-    id: m.id,
-    role: m.role as "user" | "assistant" | "system",
-    content: m.content,
-    createdAt: m.createdAt,
-    citations: m.citations ? JSON.parse(m.citations) : undefined,
-    attachments: m.attachments ? JSON.parse(m.attachments) : undefined,
-  }));
-}
 
 export default function ConversationPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,29 +20,19 @@ export default function ConversationPage() {
   const storeIsPreloaded = storeConversationId === id && storeHasMessages;
 
   useEffect(() => {
-    console.log("[ConversationPage] useEffect fired", { id, hasData: !!data, isLoading });
     if (!data) return;
 
     const { isGenerating, conversationId } = useChatStore.getState();
 
     // Don't overwrite the store while actively streaming for this conversation
-    if (isGenerating && conversationId === id) {
-      console.log("[ConversationPage] SKIP: actively streaming");
-      return;
-    }
+    if (isGenerating && conversationId === id) return;
 
-    // Backend filters out streaming placeholders (status="streaming"),
-    // so data.messages only contains completed messages.
-    console.log("[ConversationPage] messages:", data.messages.length, "last role:", data.messages[data.messages.length - 1]?.role);
     setConversation(id, parseDbMessages(data.messages));
 
     // Detect interrupted stream: last message is from user with no assistant reply
     const lastMsg = data.messages[data.messages.length - 1];
     if (lastMsg && lastMsg.role === "user") {
-      console.log("[ConversationPage] ✅ INTERRUPTED — last msg is user, triggering retry");
       setShouldRetry(true);
-    } else {
-      console.log("[ConversationPage] No retry needed — last msg role:", lastMsg?.role);
     }
   }, [id, data, setConversation]);
 

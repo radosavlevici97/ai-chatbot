@@ -1,6 +1,5 @@
 import type { ApiError as ApiErrorType, ApiResponse } from "@chatbot/shared";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+import { API_BASE } from "./utils";
 
 export class ApiError extends Error {
   constructor(

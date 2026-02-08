@@ -3,7 +3,8 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useChatStore } from "@/stores/chat-store";
-import { streamChat, retryChat } from "@/lib/sse-client";
+import { streamChat, streamChatWithUpload, retryChat } from "@/lib/sse-client";
+import type { SSECallbacks } from "@/lib/sse-client";
 import { useUpdateConversationTitle, conversationKeys } from "@/hooks/use-conversations";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
@@ -40,51 +41,13 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
     }
   }, [messages]);
 
-  // Auto-retry: if the page loaded with an interrupted stream, re-send
-  const retriedRef = useRef(false);
-  useEffect(() => {
-    console.log("[ChatView] retry effect:", { shouldRetry, retriedRef: retriedRef.current, isGenerating, conversationId });
-    if (!shouldRetry || retriedRef.current || isGenerating) {
-      console.log("[ChatView] retry SKIPPED:", { shouldRetry, alreadyRetried: retriedRef.current, isGenerating });
-      return;
-    }
-    retriedRef.current = true;
-    console.log("[ChatView] 🔄 RETRYING — calling retryChat for", conversationId);
-
-    startAssistantMessage();
-
-    const callbacks = {
-      onToken: (token: string) => {
-        appendToken(token);
-      },
-      onDone: () => {
-        console.log("[ChatView] retry onDone — stream completed");
-        finishGeneration();
-        queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
-      },
-      onError: (error: string, code?: string) => {
-        console.error("[ChatView] retry onError:", error, code);
-        finishGeneration();
-        toast.error("Failed to regenerate response", {
-          description: error || "Please try again.",
-        });
-      },
-      onTitle: (title: string) => updateTitle(conversationId, title),
-      onCitation: (citation: { source: string; page: number; relevance: number }) => addCitation(citation),
-      onInfo: (message: string) => toast.warning(message, { duration: 8000 }),
-    };
-
-    const controller = retryChat(conversationId, callbacks);
-    setAbortController(controller);
-  }, [shouldRetry]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const makeCallbacks = useCallback(() => ({
-    onToken: (token: string) => appendToken(token),
+  const makeCallbacks = useCallback((): SSECallbacks => ({
+    onToken: (token) => appendToken(token),
     onDone: () => {
       finishGeneration();
       queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
     },
-    onError: (error: string, code?: string) => {
+    onError: (error, code) => {
       finishGeneration();
       if (code === "RATE_LIMITED") {
         toast.warning("Rate limit reached", {
@@ -97,16 +60,21 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
         });
       }
     },
-    onTitle: (title: string) => {
-      updateTitle(conversationId, title);
-    },
-    onCitation: (citation: { source: string; page: number; relevance: number }) => {
-      addCitation(citation);
-    },
-    onInfo: (message: string) => {
-      toast.warning(message, { duration: 8000 });
-    },
+    onTitle: (title) => updateTitle(conversationId, title),
+    onCitation: (citation) => addCitation(citation),
+    onInfo: (message) => toast.warning(message, { duration: 8000 }),
   }), [conversationId, appendToken, finishGeneration, queryClient, updateTitle, addCitation]);
+
+  // Auto-retry: if the page loaded with an interrupted stream, re-send
+  const retriedRef = useRef(false);
+  useEffect(() => {
+    if (!shouldRetry || retriedRef.current || isGenerating) return;
+    retriedRef.current = true;
+
+    startAssistantMessage();
+    const controller = retryChat(conversationId, makeCallbacks());
+    setAbortController(controller);
+  }, [shouldRetry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = useCallback(
     (content: string, images: File[], options?: { useDocuments?: boolean }) => {
@@ -119,80 +87,20 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
         setIsUploading(true);
         setUploadProgress(0);
 
-        // Use XHR for upload progress tracking
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
-        const formData = new FormData();
-        formData.append("content", content);
-        if (options?.useDocuments) formData.append("useDocuments", "true");
-        for (const image of images) {
-          formData.append("images", image);
-        }
-
-        const xhr = new XMLHttpRequest();
-
-        xhr.upload.addEventListener("progress", (e) => {
-          if (e.lengthComputable) {
-            setUploadProgress(Math.round((e.loaded / e.total) * 100));
-          }
-        });
-
-        xhr.addEventListener("load", async () => {
-          setIsUploading(false);
-          setUploadProgress(100);
-
-          if (xhr.status >= 400) {
-            try {
-              const err = JSON.parse(xhr.responseText);
-              callbacks.onError(err.error ?? "Upload failed", err.code);
-            } catch {
-              callbacks.onError("Upload failed");
-            }
-            return;
-          }
-
-          // Parse SSE from XHR response
-          const lines = xhr.responseText.split("\n");
-          let currentEvent = "";
-          for (const line of lines) {
-            if (line.startsWith("event: ")) {
-              currentEvent = line.slice(7).trim();
-            } else if (line.startsWith("data: ") && currentEvent) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                switch (currentEvent) {
-                  case "token": callbacks.onToken(data.content); break;
-                  case "done": callbacks.onDone(); break;
-                  case "error": callbacks.onError(data.error, data.code); break;
-                  case "title": callbacks.onTitle(data.title); break;
-                  case "citation": callbacks.onCitation(data); break;
-                  case "info": callbacks.onInfo?.(data.message); break;
-                }
-              } catch { /* skip malformed */ }
-              currentEvent = "";
-            }
-          }
-        });
-
-        xhr.addEventListener("error", () => {
-          setIsUploading(false);
-          callbacks.onError("Upload failed. Check your connection.");
-        });
-
-        xhr.addEventListener("abort", () => {
-          setIsUploading(false);
-          finishGeneration();
-        });
-
-        xhr.open("POST", `${API_BASE}/conversations/${conversationId}/messages`);
-        xhr.withCredentials = true;
-        xhr.send(formData);
-
-        // Create an abort controller that wraps XHR abort
-        const controller = new AbortController();
-        controller.signal.addEventListener("abort", () => xhr.abort());
+        const controller = streamChatWithUpload(
+          conversationId,
+          { content, images, useDocuments: options?.useDocuments },
+          callbacks,
+          {
+            onProgress: (percent) => setUploadProgress(percent),
+            onUploadComplete: () => {
+              setIsUploading(false);
+              setUploadProgress(100);
+            },
+          },
+        );
         setAbortController(controller);
       } else {
-        // Text-only — standard fetch with SSE streaming
         const controller = streamChat(
           conversationId,
           { content, useDocuments: options?.useDocuments },
@@ -201,7 +109,7 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
         setAbortController(controller);
       }
     },
-    [conversationId, addUserMessage, startAssistantMessage, makeCallbacks, setAbortController, finishGeneration],
+    [conversationId, addUserMessage, startAssistantMessage, makeCallbacks, setAbortController],
   );
 
   return (
@@ -210,7 +118,7 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
         {messages.length === 0 ? (
           <ChatEmptyState onPromptClick={(prompt) => handleSend(prompt, [])} />
         ) : (
-          <div className="mx-auto max-w-3xl py-4">
+          <div className="mx-auto max-w-3xl py-4" role="log" aria-live="polite">
             {messages.map((msg) => (
               <ChatMessage
                 key={msg.id}

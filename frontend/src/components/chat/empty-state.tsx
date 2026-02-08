@@ -24,10 +24,11 @@ export function ChatEmptyState({ onPromptClick }: Props) {
           Upload documents or images for context.
         </p>
       </div>
-      <div className="flex flex-wrap justify-center gap-2 max-w-md">
+      <div className="flex flex-wrap justify-center gap-2 max-w-md" role="group" aria-label="Suggested prompts">
         {SUGGESTED_PROMPTS.map((prompt) => (
           <button
             key={prompt}
+            aria-label={`Send prompt: ${prompt}`}
             className="rounded-full border px-3 py-1.5 text-xs hover:bg-muted active:bg-muted transition"
             onClick={() => onPromptClick?.(prompt)}
           >

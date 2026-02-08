@@ -2,9 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api-client";
+import { API_BASE } from "@/lib/utils";
 import type { DocumentListItem, PaginatedResponse } from "@chatbot/shared";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 // ── Query: document list ────────────────────────────
 export function useDocuments(limit = 20) {
