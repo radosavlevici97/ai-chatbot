@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useEffect, useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useChatStore } from "@/stores/chat-store";
 import { streamChat, retryChat } from "@/lib/sse-client";
-import { useUpdateConversationTitle, useConversations } from "@/hooks/use-conversations";
+import { useUpdateConversationTitle, conversationKeys } from "@/hooks/use-conversations";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
 import { ChatEmptyState } from "./empty-state";
@@ -28,7 +29,7 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
   } = useChatStore();
 
   const updateTitle = useUpdateConversationTitle();
-  const { refetch: refetchList } = useConversations();
+  const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -59,7 +60,7 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
       onDone: () => {
         console.log("[ChatView] retry onDone — stream completed");
         finishGeneration();
-        refetchList();
+        queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
       },
       onError: (error: string, code?: string) => {
         console.error("[ChatView] retry onError:", error, code);
@@ -81,7 +82,7 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
     onToken: (token: string) => appendToken(token),
     onDone: () => {
       finishGeneration();
-      refetchList();
+      queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
     },
     onError: (error: string, code?: string) => {
       finishGeneration();
@@ -105,7 +106,7 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
     onInfo: (message: string) => {
       toast.warning(message, { duration: 8000 });
     },
-  }), [conversationId, appendToken, finishGeneration, refetchList, updateTitle, addCitation]);
+  }), [conversationId, appendToken, finishGeneration, queryClient, updateTitle, addCitation]);
 
   const handleSend = useCallback(
     (content: string, images: File[], options?: { useDocuments?: boolean }) => {

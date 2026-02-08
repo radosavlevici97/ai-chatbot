@@ -5,7 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { Plus, PanelLeftClose, PanelLeftOpen, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores/ui-store";
-import { useConversations, useCreateConversation } from "@/hooks/use-conversations";
+import { useChatStore } from "@/stores/chat-store";
+import { useConversations } from "@/hooks/use-conversations";
 import { ConversationList } from "./conversation-list";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { UserMenu } from "./user-menu";
@@ -32,13 +33,18 @@ export function Sidebar() {
     isFetchingNextPage,
   } = useConversations();
 
-  const createMutation = useCreateConversation();
-
   const conversations = data?.pages.flatMap((page) => page.data) ?? [];
 
-  const handleNewChat = async () => {
-    const conv = await createMutation.mutateAsync({ model: "gemini-2.5-flash" });
-    router.push(`/c/${conv.id}`);
+  // Determine if we're already on the new-chat page
+  const isOnNewChat = pathname === "/" || pathname === "";
+
+  const handleNewChat = () => {
+    if (isOnNewChat) return;
+
+    // Clear chat store so the new-chat page starts fresh
+    useChatStore.getState().clearMessages();
+
+    router.push("/");
     if (isMobile) setSidebarOpen(false);
   };
 
@@ -71,7 +77,7 @@ export function Sidebar() {
             onLoadMore={() => fetchNextPage()}
             onNewChat={handleNewChat}
             onToggle={toggleSidebar}
-            isCreating={createMutation.isPending}
+            isNewChatDisabled={isOnNewChat}
           />
         </aside>
       </>
@@ -90,7 +96,7 @@ export function Sidebar() {
         onLoadMore={() => fetchNextPage()}
         onNewChat={handleNewChat}
         onToggle={toggleSidebar}
-        isCreating={createMutation.isPending}
+        isNewChatDisabled={isOnNewChat}
       />
     </aside>
   );
@@ -107,7 +113,7 @@ type SidebarContentProps = {
   onLoadMore: () => void;
   onNewChat: () => void;
   onToggle: () => void;
-  isCreating: boolean;
+  isNewChatDisabled: boolean;
 };
 
 function SidebarContent({
@@ -119,7 +125,7 @@ function SidebarContent({
   onLoadMore,
   onNewChat,
   onToggle,
-  isCreating,
+  isNewChatDisabled,
 }: SidebarContentProps) {
   return (
     <>
@@ -131,10 +137,10 @@ function SidebarContent({
           variant="outline"
           size="sm"
           onClick={onNewChat}
-          disabled={isCreating}
+          disabled={isNewChatDisabled}
         >
           <Plus className="mr-1 h-4 w-4" />
-          {isCreating ? "Creating..." : "New chat"}
+          New chat
         </Button>
       </div>
 
