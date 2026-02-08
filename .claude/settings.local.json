@@ -37,7 +37,8 @@
       "Bash(git -C \"C:\\\\Users\\\\Calin\\\\Documents\\\\ai-chatbot\" config user.name \"radosavlevici97\")",
       "Bash(gh auth status:*)",
       "WebFetch(domain:api.github.com)",
-      "Bash(git -C \"C:\\\\Users\\\\Calin\\\\Documents\\\\ai-chatbot\" config user.email \"radosavlevici97@users.noreply.github.com\")"
+      "Bash(git -C \"C:\\\\Users\\\\Calin\\\\Documents\\\\ai-chatbot\" config user.email \"radosavlevici97@users.noreply.github.com\")",
+      "WebFetch(domain:ai-chatbot-production-el4a.up.railway.app)"
     ]
   }
 }
