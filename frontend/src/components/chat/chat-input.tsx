@@ -118,7 +118,7 @@ export function ChatInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="border-t bg-background p-4"
+      className="border-t bg-background px-3 py-3 pb-safe md:px-4 md:py-4"
       onDrop={handleDrop}
       onDragOver={(e) => {
         e.preventDefault();
@@ -185,7 +185,7 @@ export function ChatInput({
           placeholder={images.length > 0 ? "Ask about this image..." : "Send a message..."}
           disabled={disabled || isBusy}
           rows={1}
-          className="flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2 text-base md:text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         />
         {isGenerating ? (
           <Button type="button" variant="destructive" size="icon" onClick={onStop}>

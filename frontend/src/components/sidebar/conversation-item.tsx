@@ -87,7 +87,7 @@ export function ConversationItem({ conversation, isActive }: Props) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 opacity-0 group-hover:opacity-100"
+            className="h-7 w-7 shrink-0 md:opacity-0 md:group-hover:opacity-100 md:data-[state=open]:opacity-100"
           >
             <MoreHorizontal className="h-4 w-4" />
           </Button>

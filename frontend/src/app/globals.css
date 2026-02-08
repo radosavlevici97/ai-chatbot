@@ -80,7 +80,20 @@
   }
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
   }
+}
+
+/* Mobile viewport height — dvh accounts for mobile browser chrome (URL bar) */
+.h-dvh {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Safe area padding for notched/pill devices */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Chat message animations */

@@ -52,19 +52,19 @@ export function ChatMessage({ role, content, isStreaming, citations, attachments
     <>
       <div
         className={cn(
-          "flex gap-3 py-4 animate-message-in",
+          "flex gap-2 py-3 animate-message-in md:gap-3 md:py-4",
           isUser && "flex-row-reverse",
         )}
       >
         <div
           className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full md:h-8 md:w-8",
             isUser ? "bg-primary text-primary-foreground" : "bg-muted",
           )}
         >
           {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
         </div>
-        <div className={cn("flex max-w-[80%] flex-col gap-1", isUser && "items-end")}>
+        <div className={cn("flex max-w-[85%] flex-col gap-1 md:max-w-[80%]", isUser && "items-end")}>
           {/* Inline images */}
           {imageAttachments.length > 0 && (
             <div className="flex gap-2 flex-wrap">
@@ -73,7 +73,7 @@ export function ChatMessage({ role, content, isStreaming, citations, attachments
                   key={i}
                   src={imageUrl(attachment.storagePath)}
                   alt="Uploaded image"
-                  className="max-h-64 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
+                  className="max-h-48 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity md:max-h-64"
                   loading="lazy"
                   onClick={() => setLightboxSrc(imageUrl(attachment.storagePath))}
                 />
