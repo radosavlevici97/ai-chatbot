@@ -39,7 +39,7 @@ export function UploadPanel() {
 
   return (
     <div
-      className={`relative rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
+      className={`relative rounded-lg border-2 border-dashed p-6 text-center transition-colors md:p-8 ${
         dragOver ? "border-primary bg-primary/5" : "hover:border-primary/50"
       }`}
       onDrop={handleDrop}

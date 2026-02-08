@@ -15,8 +15,8 @@ type Props = {
 
 export function ChatEmptyState({ onPromptClick }: Props) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-      <Sparkles className="h-12 w-12 text-muted-foreground/50" />
+    <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
+      <Sparkles className="h-10 w-10 text-muted-foreground/50 md:h-12 md:w-12" />
       <div>
         <h2 className="text-lg font-semibold">Start a conversation</h2>
         <p className="mt-1 text-sm text-muted-foreground max-w-sm">
@@ -24,11 +24,11 @@ export function ChatEmptyState({ onPromptClick }: Props) {
           Upload documents or images for context.
         </p>
       </div>
-      <div className="flex flex-wrap gap-2 max-w-md">
+      <div className="flex flex-wrap justify-center gap-2 max-w-md">
         {SUGGESTED_PROMPTS.map((prompt) => (
           <button
             key={prompt}
-            className="rounded-full border px-3 py-1.5 text-xs hover:bg-muted transition"
+            className="rounded-full border px-3 py-1.5 text-xs hover:bg-muted active:bg-muted transition"
             onClick={() => onPromptClick?.(prompt)}
           >
             {prompt}

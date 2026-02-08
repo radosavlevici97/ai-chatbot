@@ -206,7 +206,7 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
 
   return (
     <div className="flex h-full flex-col">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 md:px-4">
         {messages.length === 0 ? (
           <ChatEmptyState onPromptClick={(prompt) => handleSend(prompt, [])} />
         ) : (

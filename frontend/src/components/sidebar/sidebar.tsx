@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, PanelLeftClose, PanelLeftOpen, FileText } from "lucide-react";
+import { Plus, PanelLeftClose, PanelLeftOpen, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores/ui-store";
 import { useChatStore } from "@/stores/chat-store";
@@ -24,6 +24,11 @@ export function Sidebar() {
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
   }, [isMobile, setSidebarOpen]);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [pathname, isMobile, setSidebarOpen]);
 
   const {
     data,
@@ -48,26 +53,18 @@ export function Sidebar() {
     if (isMobile) setSidebarOpen(false);
   };
 
-  // Collapsed state: show toggle button only
-  if (!sidebarOpen) {
-    return (
-      <div className="flex flex-col items-center p-2 border-r">
-        <Button variant="ghost" size="icon" onClick={toggleSidebar}>
-          <PanelLeftOpen className="h-5 w-5" />
-        </Button>
-      </div>
-    );
-  }
-
-  // Mobile: overlay sidebar
+  // On mobile, sidebar is only shown as overlay (controlled by MobileHeader)
+  // No collapsed toggle bar needed on mobile
   if (isMobile) {
+    if (!sidebarOpen) return null;
+
     return (
       <>
         <div
           className="fixed inset-0 z-40 bg-black/50"
           onClick={() => setSidebarOpen(false)}
         />
-        <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-background shadow-lg">
+        <aside className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r bg-background shadow-lg pb-safe">
           <SidebarContent
             conversations={conversations}
             isLoading={isLoading}
@@ -76,11 +73,24 @@ export function Sidebar() {
             isFetchingNextPage={isFetchingNextPage}
             onLoadMore={() => fetchNextPage()}
             onNewChat={handleNewChat}
+            onClose={() => setSidebarOpen(false)}
             onToggle={toggleSidebar}
             isNewChatDisabled={isOnNewChat}
+            isMobile={true}
           />
         </aside>
       </>
+    );
+  }
+
+  // Desktop: collapsed state shows toggle button
+  if (!sidebarOpen) {
+    return (
+      <div className="flex flex-col items-center p-2 border-r">
+        <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+          <PanelLeftOpen className="h-5 w-5" />
+        </Button>
+      </div>
     );
   }
 
@@ -95,8 +105,10 @@ export function Sidebar() {
         isFetchingNextPage={isFetchingNextPage}
         onLoadMore={() => fetchNextPage()}
         onNewChat={handleNewChat}
+        onClose={() => setSidebarOpen(false)}
         onToggle={toggleSidebar}
         isNewChatDisabled={isOnNewChat}
+        isMobile={false}
       />
     </aside>
   );
@@ -112,8 +124,10 @@ type SidebarContentProps = {
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
   onNewChat: () => void;
+  onClose: () => void;
   onToggle: () => void;
   isNewChatDisabled: boolean;
+  isMobile: boolean;
 };
 
 function SidebarContent({
@@ -124,15 +138,23 @@ function SidebarContent({
   isFetchingNextPage,
   onLoadMore,
   onNewChat,
+  onClose,
   onToggle,
   isNewChatDisabled,
+  isMobile,
 }: SidebarContentProps) {
   return (
     <>
       <div className="flex items-center justify-between p-3">
-        <Button variant="ghost" size="icon" onClick={onToggle}>
-          <PanelLeftClose className="h-5 w-5" />
-        </Button>
+        {isMobile ? (
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close menu">
+            <X className="h-5 w-5" />
+          </Button>
+        ) : (
+          <Button variant="ghost" size="icon" onClick={onToggle}>
+            <PanelLeftClose className="h-5 w-5" />
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
