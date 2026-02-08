@@ -15,6 +15,13 @@
       "when": 1770458470188,
       "tag": "0001_parallel_valeria_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1770540287545,
+      "tag": "0002_goofy_dragon_lord",
+      "breakpoints": true
     }
   ]
 }

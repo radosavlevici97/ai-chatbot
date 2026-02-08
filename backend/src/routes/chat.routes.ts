@@ -199,6 +199,68 @@ async function handleMultipartMessage(
   });
 }
 
+// ── Retry: re-stream LLM response for the last user message ──
+chat.post(
+  "/conversations/:conversationId/retry",
+  requireAuth,
+  chatLimiter,
+  async (c) => {
+    const { conversationId } = c.req.param();
+    const userId = c.get("userId");
+    const requestId = c.get("requestId");
+
+    const conv = convService.getConversation(conversationId, userId);
+    const allMessages = convService.getConversationMessages(conversationId, userId);
+
+    // Clean up any stale streaming placeholders left by an interrupted stream.
+    // These are empty assistant rows that the finally{} block hasn't deleted yet
+    // (race condition: the client refreshed before server cleanup finished).
+    const staleStreamingIds = allMessages
+      .filter((m) => m.status === "streaming")
+      .map((m) => m.id);
+    for (const id of staleStreamingIds) {
+      convService.deleteMessage(id);
+      log.info({ requestId, conversationId, messageId: id }, "[retry] deleted stale streaming placeholder");
+    }
+
+    const history = allMessages.filter((m) => m.status !== "streaming");
+
+    log.info({ requestId, conversationId, messageCount: history.length }, "[retry] endpoint hit");
+
+    if (history.length === 0) {
+      log.warn({ requestId, conversationId }, "[retry] no messages to retry");
+      return c.json({ error: "No messages to retry" }, 400);
+    }
+
+    const lastMessage = history[history.length - 1];
+    log.info({ requestId, conversationId, lastRole: lastMessage.role, lastContent: lastMessage.content.slice(0, 50) }, "[retry] last message");
+
+    if (lastMessage.role !== "user") {
+      log.warn({ requestId, conversationId, lastRole: lastMessage.role }, "[retry] last message is not from user");
+      return c.json({ error: "Last message is not from user" }, 400);
+    }
+
+    const llmMessages = buildContextMessages(
+      history.map((m) => ({ role: m.role as "user" | "assistant" | "system", content: m.content })),
+      conv.systemPrompt,
+    );
+
+    return streamLLMResponse(c, {
+      llmMessages,
+      model: conv.model,
+      temperature: 0.7,
+      maxTokens: 4096,
+      conversationId,
+      userId,
+      requestId,
+      history,
+      conv,
+      userContent: lastMessage.content,
+      ragCitations: [],
+    });
+  },
+);
+
 // ── RAG context injection (shared by both paths) ──
 async function injectRagContext(
   llmMessages: { role: string; content: string }[],
@@ -259,7 +321,22 @@ function streamLLMResponse(c: any, opts: StreamOptions) {
   const streamController = new AbortController();
   trackStream(streamController);
 
+  // Pre-insert assistant message with status=streaming BEFORE the SSE begins.
+  // If the client disconnects mid-stream, this row stays as "streaming" —
+  // the frontend detects it on reload and auto-retries.
+  const assistantRow = convService.addMessage({
+    conversationId: opts.conversationId,
+    role: "assistant",
+    content: "",
+    status: "streaming",
+    model: opts.model ?? opts.conv.model,
+  });
+
   return streamSSE(c, async (stream) => {
+    let fullResponse = "";
+    let usedFallback = false;
+    let completed = false;
+
     try {
       // Send citation events before response tokens
       for (const citation of opts.ragCitations) {
@@ -268,9 +345,6 @@ function streamLLMResponse(c: any, opts: StreamOptions) {
           data: JSON.stringify(citation),
         });
       }
-
-      let fullResponse = "";
-      let usedFallback = false;
 
       for await (const chunk of primaryLlm.streamChat(opts.llmMessages, {
         model: opts.model,
@@ -394,14 +468,11 @@ function streamLLMResponse(c: any, opts: StreamOptions) {
         }
       }
 
-      // Persist assistant response
+      // Stream completed successfully — finalize the assistant message
       if (fullResponse) {
-        convService.addMessage({
-          conversationId: opts.conversationId,
-          role: "assistant",
-          content: fullResponse,
-          model: usedFallback ? env.OPENROUTER_MODEL : (opts.model ?? opts.conv.model),
-        });
+        const finalModel = usedFallback ? env.OPENROUTER_MODEL : (opts.model ?? opts.conv.model);
+        convService.completeMessage(assistantRow.id, fullResponse, finalModel);
+        completed = true;
 
         // Auto-generate title on first exchange
         if (opts.history.length <= 1 && !opts.conv.title) {
@@ -420,8 +491,18 @@ function streamLLMResponse(c: any, opts: StreamOptions) {
             );
           }
         }
+      } else {
+        // LLM returned nothing — clean up the empty placeholder
+        convService.deleteMessage(assistantRow.id);
+        completed = true;
       }
     } finally {
+      // If we never completed (client disconnected mid-stream), the row stays
+      // as status="streaming". The frontend will detect this and auto-retry.
+      if (!completed) {
+        // Delete the incomplete placeholder so the retry creates a fresh one
+        convService.deleteMessage(assistantRow.id);
+      }
       untrackStream(streamController);
     }
   });

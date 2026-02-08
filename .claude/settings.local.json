@@ -26,7 +26,8 @@
       "WebFetch(domain:docs.trychroma.com)",
       "WebFetch(domain:cookbook.chromadb.dev)",
       "WebFetch(domain:www.npmjs.com)",
-      "Bash(pnpm:*)"
+      "Bash(pnpm:*)",
+      "Bash(sqlite3:*)"
     ]
   }
 }
