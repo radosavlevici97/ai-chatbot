@@ -28,6 +28,7 @@ const envSchema = z.object({
     .string()
     .default("true")
     .transform((v) => v === "true"),
+  COOKIE_SAMESITE: z.enum(["None", "Lax", "Strict"]).default("None"),
 
   // Database
   DATABASE_PATH: z.string().default("./data/chatbot.db"),
