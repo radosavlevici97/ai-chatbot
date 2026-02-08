@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useCreateConversation, useUpdateConversationTitle } from "@/hooks/use-conversations";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCreateConversation, useUpdateConversationTitle, conversationKeys } from "@/hooks/use-conversations";
 import { ChatInput } from "@/components/chat/chat-input";
 import { ChatEmptyState } from "@/components/chat/empty-state";
 import { useChatStore } from "@/stores/chat-store";
@@ -13,6 +14,7 @@ export default function NewChatPage() {
   const router = useRouter();
   const createMutation = useCreateConversation();
   const updateTitle = useUpdateConversationTitle();
+  const queryClient = useQueryClient();
   const {
     addUserMessage,
     startAssistantMessage,
@@ -39,7 +41,10 @@ export default function NewChatPage() {
 
       const callbacks = {
         onToken: (token: string) => appendToken(token),
-        onDone: () => finishGeneration(),
+        onDone: () => {
+          finishGeneration();
+          queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+        },
         onError: (error: string, code?: string) => {
           finishGeneration();
           if (code === "RATE_LIMITED") {
@@ -133,7 +138,7 @@ export default function NewChatPage() {
         setAbortController(controller);
       }
     },
-    [createMutation, router, setConversation, addUserMessage, startAssistantMessage, appendToken, finishGeneration, setAbortController, updateTitle],
+    [createMutation, router, setConversation, addUserMessage, startAssistantMessage, appendToken, finishGeneration, setAbortController, updateTitle, queryClient],
   );
 
   return (
