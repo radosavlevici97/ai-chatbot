@@ -42,6 +42,7 @@ export const messages = sqliteTable("messages", {
   role: text("role", { enum: ["user", "assistant", "system"] }).notNull(),
   content: text("content").notNull(),
   model: text("model"),
+  status: text("status", { enum: ["streaming", "done"] }).notNull().default("done"),
   tokensPrompt: integer("tokens_prompt"),
   tokensCompletion: integer("tokens_completion"),
   attachments: text("attachments"),

@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useChatStore } from "@/stores/chat-store";
-import { streamChat } from "@/lib/sse-client";
+import { streamChat, retryChat } from "@/lib/sse-client";
 import { useUpdateConversationTitle, useConversations } from "@/hooks/use-conversations";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
@@ -11,9 +11,10 @@ import { toast } from "sonner";
 
 type Props = {
   conversationId: string;
+  shouldRetry?: boolean;
 };
 
-export function ChatView({ conversationId }: Props) {
+export function ChatView({ conversationId, shouldRetry }: Props) {
   const {
     messages,
     isGenerating,
@@ -37,6 +38,44 @@ export function ChatView({ conversationId }: Props) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Auto-retry: if the page loaded with an interrupted stream, re-send
+  const retriedRef = useRef(false);
+  useEffect(() => {
+    console.log("[ChatView] retry effect:", { shouldRetry, retriedRef: retriedRef.current, isGenerating, conversationId });
+    if (!shouldRetry || retriedRef.current || isGenerating) {
+      console.log("[ChatView] retry SKIPPED:", { shouldRetry, alreadyRetried: retriedRef.current, isGenerating });
+      return;
+    }
+    retriedRef.current = true;
+    console.log("[ChatView] 🔄 RETRYING — calling retryChat for", conversationId);
+
+    startAssistantMessage();
+
+    const callbacks = {
+      onToken: (token: string) => {
+        appendToken(token);
+      },
+      onDone: () => {
+        console.log("[ChatView] retry onDone — stream completed");
+        finishGeneration();
+        refetchList();
+      },
+      onError: (error: string, code?: string) => {
+        console.error("[ChatView] retry onError:", error, code);
+        finishGeneration();
+        toast.error("Failed to regenerate response", {
+          description: error || "Please try again.",
+        });
+      },
+      onTitle: (title: string) => updateTitle(conversationId, title),
+      onCitation: (citation: { source: string; page: number; relevance: number }) => addCitation(citation),
+      onInfo: (message: string) => toast.warning(message, { duration: 8000 }),
+    };
+
+    const controller = retryChat(conversationId, callbacks);
+    setAbortController(controller);
+  }, [shouldRetry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const makeCallbacks = useCallback(() => ({
     onToken: (token: string) => appendToken(token),

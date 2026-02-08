@@ -1,11 +1,14 @@
 export type MessageRole = "user" | "assistant" | "system";
 
+export type MessageStatus = "streaming" | "done";
+
 export type Message = {
   id: string;
   conversationId: string;
   role: MessageRole;
   content: string;
   model?: string;
+  status?: MessageStatus;
   tokensPrompt?: number;
   tokensCompletion?: number;
   attachments?: string;

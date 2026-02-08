@@ -57,7 +57,11 @@ convRouter.get(
   (c) => {
     const userId = c.get("userId");
     const conv = convService.getConversation(c.req.param("id"), userId);
-    const msgs = convService.getConversationMessages(c.req.param("id"), userId);
+    const allMsgs = convService.getConversationMessages(c.req.param("id"), userId);
+    // Exclude in-flight streaming placeholders (empty assistant messages being
+    // generated right now). These are transient rows — either the stream will
+    // complete and fill them, or the finally{} block will delete them.
+    const msgs = allMsgs.filter((m) => m.status !== "streaming");
     return c.json({ data: { ...conv, messages: msgs } });
   },
 );

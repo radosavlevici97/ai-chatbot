@@ -79,6 +79,38 @@ export function streamChatWithImages(
 }
 
 /**
+ * Retry the last user message in a conversation (re-stream LLM response).
+ * Used when the page reloads after an interrupted stream.
+ */
+export function retryChat(
+  conversationId: string,
+  callbacks: SSECallbacks,
+): AbortController {
+  const controller = new AbortController();
+  const url = `${API_BASE}/conversations/${conversationId}/retry`;
+  console.log("[retryChat] POST", url);
+
+  fetch(url, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    signal: controller.signal,
+  })
+    .then((response) => {
+      console.log("[retryChat] response status:", response.status, response.statusText);
+      return parseSSEStream(response, callbacks);
+    })
+    .catch((err) => {
+      console.error("[retryChat] fetch error:", err.name, err.message);
+      if (err.name !== "AbortError") {
+        callbacks.onError(err.message, "NETWORK_ERROR");
+      }
+    });
+
+  return controller;
+}
+
+/**
  * Parse an SSE stream from a fetch Response.
  * Shared by both text-only and multipart message senders.
  */

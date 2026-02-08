@@ -28,7 +28,7 @@ export type {
 
 // Types
 export type { TokenPair, AuthResponse, UserProfile } from "./types/auth.js";
-export type { Message, MessageRole, StreamChunk } from "./types/chat.js";
+export type { Message, MessageRole, MessageStatus, StreamChunk } from "./types/chat.js";
 export type { Conversation, ConversationListItem, ConversationWithMessages } from "./types/conversation.js";
 export type { ApiResponse, ApiError, PaginatedResponse } from "./types/api.js";
 

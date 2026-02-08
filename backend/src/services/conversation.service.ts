@@ -127,6 +127,25 @@ export async function deleteConversation(
   log.info({ requestId, conversationId: id, userId }, "Conversation deleted");
 }
 
+// ── Complete a streaming message (set content + status=done) ──
+
+export function completeMessage(
+  messageId: string,
+  content: string,
+  model?: string,
+): void {
+  db.update(messages)
+    .set({ content, status: "done", model: model ?? undefined })
+    .where(eq(messages.id, messageId))
+    .run();
+}
+
+// ── Delete a message by id ───────────────────────
+
+export function deleteMessage(messageId: string): void {
+  db.delete(messages).where(eq(messages.id, messageId)).run();
+}
+
 // ── Add message (atomic with updatedAt touch) ────
 
 export function addMessage(input: {
@@ -134,6 +153,7 @@ export function addMessage(input: {
   role: "user" | "assistant" | "system";
   content: string;
   model?: string;
+  status?: "streaming" | "done";
   tokensPrompt?: number;
   tokensCompletion?: number;
   attachments?: string;
