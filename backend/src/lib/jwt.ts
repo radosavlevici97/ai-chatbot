@@ -56,7 +56,7 @@ export async function createTokenPair(userId: string) {
 
 export function setAuthCookies(c: Context, accessToken: string, refreshToken: string) {
   const secure = env.COOKIE_SECURE ? "Secure; " : "";
-  const sameSite = env.COOKIE_SECURE ? "None" : "Strict";
+  const sameSite = env.COOKIE_SAMESITE;
   const domain = env.COOKIE_DOMAIN ? `Domain=${env.COOKIE_DOMAIN}; ` : "";
 
   c.header(
@@ -73,7 +73,7 @@ export function setAuthCookies(c: Context, accessToken: string, refreshToken: st
 
 export function clearAuthCookies(c: Context) {
   const secure = env.COOKIE_SECURE ? "Secure; " : "";
-  const sameSite = env.COOKIE_SECURE ? "None" : "Strict";
+  const sameSite = env.COOKIE_SAMESITE;
   const domain = env.COOKIE_DOMAIN ? `Domain=${env.COOKIE_DOMAIN}; ` : "";
 
   c.header("Set-Cookie", `access_token=; Max-Age=0; HttpOnly; ${secure}${domain}SameSite=${sameSite}; Path=/`, { append: true });
