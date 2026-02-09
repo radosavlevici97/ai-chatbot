@@ -132,7 +132,7 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
           </div>
         )}
       </div>
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto w-full max-w-3xl shrink-0 pb-2 md:pb-3">
         <ChatInput
           onSend={handleSend}
           onStop={stopGeneration}
