@@ -151,9 +151,6 @@ export function ChatInput({
       {/* Image previews */}
       <ImagePreview images={images} onRemove={removeImage} />
 
-      <div className="mb-2">
-        <RagToggle checked={useDocuments} onChange={setUseDocuments} />
-      </div>
       <div className="flex items-end gap-2">
         {/* Image upload button */}
         <Button
@@ -175,18 +172,22 @@ export function ChatInput({
           className="hidden"
         />
 
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onInput={handleInput}
-          onPaste={handlePaste}
-          placeholder={images.length > 0 ? "Ask about this image..." : "Send a message..."}
-          disabled={disabled || isBusy}
-          rows={1}
-          className="flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2 text-base md:text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-        />
+        <div className="flex flex-1 flex-col gap-1">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onInput={handleInput}
+            onPaste={handlePaste}
+            placeholder={images.length > 0 ? "Ask about this image..." : "Send a message..."}
+            disabled={disabled || isBusy}
+            rows={1}
+            className="w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-base md:text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          <RagToggle checked={useDocuments} onChange={setUseDocuments} />
+        </div>
+
         {isGenerating ? (
           <Button type="button" variant="destructive" size="icon" onClick={onStop}>
             <Square className="h-4 w-4" />
