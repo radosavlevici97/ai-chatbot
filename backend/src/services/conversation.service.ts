@@ -43,6 +43,8 @@ export function listConversations(
       id: conversations.id,
       title: conversations.title,
       model: conversations.model,
+      mode: conversations.mode,
+      repoId: conversations.repoId,
       updatedAt: conversations.updatedAt,
       createdAt: conversations.createdAt,
     })

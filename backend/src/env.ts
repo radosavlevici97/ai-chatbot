@@ -53,6 +53,12 @@ const envSchema = z.object({
   RATE_LIMIT_CHAT_PER_MINUTE: z.coerce.number().default(30),
   RATE_LIMIT_CONVERSATION_PER_MINUTE: z.coerce.number().default(60),
   RATE_LIMIT_UPLOAD_PER_HOUR: z.coerce.number().default(20),
+
+  // DevBot mode (optional — app works without these in normal chat mode)
+  ANTHROPIC_API_KEY: z.string().optional(),
+  ENCRYPTION_KEY: z.string().optional(), // 32-byte hex key for encrypting GitHub tokens
+  GITHUB_TOKEN: z.string().optional(),   // Fallback PAT for V1 single-user
+  FIREBASE_SERVICE_ACCOUNT: z.string().optional(), // Firebase SA JSON or path
 });
 
 export type Env = z.infer<typeof envSchema>;

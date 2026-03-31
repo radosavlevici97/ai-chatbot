@@ -17,6 +17,36 @@ export const users = sqliteTable("users", {
 });
 
 // ──────────────────────────────────────────────
+// Repos (user-connected GitHub repositories)
+// ──────────────────────────────────────────────
+export const repos = sqliteTable("repos", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  githubOwner: text("github_owner").notNull(),
+  githubRepo: text("github_repo").notNull(),
+  defaultBranch: text("default_branch").notNull().default("main"),
+  description: text("description"),
+  language: text("language"),
+  avatarUrl: text("avatar_url"),
+  firebaseProjectId: text("firebase_project_id"),
+  addedAt: text("added_at").notNull().default(sql`(datetime('now'))`),
+}, (table) => [
+  index("repos_user_idx").on(table.userId),
+]);
+
+// ──────────────────────────────────────────────
+// GitHub Tokens (encrypted PATs, one per user)
+// ──────────────────────────────────────────────
+export const githubTokens = sqliteTable("github_tokens", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  encryptedToken: text("encrypted_token").notNull(),
+  githubUsername: text("github_username"),
+  avatarUrl: text("avatar_url"),
+  tokenScope: text("token_scope"),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+// ──────────────────────────────────────────────
 // Conversations
 // ──────────────────────────────────────────────
 export const conversations = sqliteTable("conversations", {
@@ -25,6 +55,9 @@ export const conversations = sqliteTable("conversations", {
   title: text("title"),
   model: text("model").notNull(),
   systemPrompt: text("system_prompt"),
+  mode: text("mode", { enum: ["chat", "devbot"] }).notNull().default("chat"),
+  repoId: text("repo_id").references(() => repos.id),
+  workingBranch: text("working_branch"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 }, (table) => [

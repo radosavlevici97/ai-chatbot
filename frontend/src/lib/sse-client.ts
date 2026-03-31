@@ -1,5 +1,7 @@
 import { API_BASE } from "./utils";
 
+import type { ToolCallEvent, ApprovalRequest } from "@chatbot/shared";
+
 export type SSECallbacks = {
   onToken: (content: string) => void;
   onDone: (usage: Record<string, unknown>) => void;
@@ -7,6 +9,8 @@ export type SSECallbacks = {
   onTitle?: (title: string) => void;
   onCitation?: (citation: { source: string; page: number; relevance: number }) => void;
   onInfo?: (message: string) => void;
+  onToolCall?: (event: ToolCallEvent) => void;
+  onApprovalRequest?: (approval: ApprovalRequest) => void;
 };
 
 /**
@@ -208,5 +212,7 @@ function dispatchSSEEvent(
     case "title": callbacks.onTitle?.(data.title as string); break;
     case "citation": callbacks.onCitation?.(data as unknown as { source: string; page: number; relevance: number }); break;
     case "info": callbacks.onInfo?.(data.message as string); break;
+    case "tool_call": callbacks.onToolCall?.(data as unknown as ToolCallEvent); break;
+    case "approval_request": callbacks.onApprovalRequest?.(data as unknown as ApprovalRequest); break;
   }
 }

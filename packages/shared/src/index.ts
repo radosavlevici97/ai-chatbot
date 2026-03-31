@@ -39,6 +39,31 @@ export {
 } from "./schemas/attachment.js";
 export type { ImageAttachment, Attachment } from "./schemas/attachment.js";
 
+// DevBot Schemas
+export {
+  connectRepoInputSchema,
+  saveTokenInputSchema,
+  repoSchema,
+  updateRepoInputSchema,
+  createDevBotConversationInputSchema,
+} from "./schemas/devbot.js";
+export type {
+  ConnectRepoInput,
+  SaveTokenInput,
+  UpdateRepoInput,
+  CreateDevBotConversationInput,
+} from "./schemas/devbot.js";
+
+// DevBot Types
+export type {
+  Repo,
+  DevBotSettings,
+  ToolCallEvent,
+  ApprovalRequest,
+  DeployStatus,
+  ConversationMode,
+} from "./types/devbot.js";
+
 // Constants
 export { AVAILABLE_MODELS, DEFAULT_MODEL } from "./constants/models.js";
 export { LIMITS, IMAGE_LIMITS } from "./constants/limits.js";

@@ -5,6 +5,7 @@ import { convRouter } from "./conversation.routes.js";
 import { docs } from "./document.routes.js";
 import { images } from "./image.routes.js";
 import { health } from "./health.routes.js";
+import { devbot } from "./devbot.routes.js";
 import type { AppEnv } from "../app.js";
 
 const routes = new Hono<AppEnv>();
@@ -15,5 +16,6 @@ routes.route("/", convRouter);
 routes.route("/", docs);
 routes.route("/", images);
 routes.route("/", health);
+routes.route("/", devbot);
 
 export { routes };

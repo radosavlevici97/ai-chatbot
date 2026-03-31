@@ -3,20 +3,27 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useChatStore } from "@/stores/chat-store";
+import { useDevBotStore } from "@/stores/devbot-store";
 import { streamChat, streamChatWithUpload, retryChat } from "@/lib/sse-client";
 import type { SSECallbacks } from "@/lib/sse-client";
 import { useUpdateConversationTitle, conversationKeys } from "@/hooks/use-conversations";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
 import { ChatEmptyState } from "./empty-state";
+import { ToolCallStack } from "@/components/devbot/tool-call-stack";
+import { ApprovalCard } from "@/components/devbot/approval-card";
+import { DevBotChatHeader } from "@/components/devbot/devbot-chat-header";
 import { toast } from "sonner";
+import type { ConversationMode, Repo } from "@chatbot/shared";
 
 type Props = {
   conversationId: string;
   shouldRetry?: boolean;
+  mode?: ConversationMode;
+  repo?: Repo | null;
 };
 
-export function ChatView({ conversationId, shouldRetry }: Props) {
+export function ChatView({ conversationId, shouldRetry, mode = "chat", repo }: Props) {
   const {
     messages,
     isGenerating,
@@ -28,6 +35,18 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
     setAbortController,
     stopGeneration,
   } = useChatStore();
+
+  const isDevBot = mode === "devbot";
+  const {
+    toolCallStack,
+    pendingApproval,
+    workingBranch,
+    pushToolCall,
+    updateToolCall,
+    clearToolCalls,
+    setPendingApproval,
+    setWorkingBranch,
+  } = useDevBotStore();
 
   const updateTitle = useUpdateConversationTitle();
   const queryClient = useQueryClient();
@@ -63,7 +82,26 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
     onTitle: (title) => updateTitle(conversationId, title),
     onCitation: (citation) => addCitation(citation),
     onInfo: (message) => toast.warning(message, { duration: 8000 }),
-  }), [conversationId, appendToken, finishGeneration, queryClient, updateTitle, addCitation]);
+    onToolCall: isDevBot
+      ? (event) => {
+          if (event.status === "running") {
+            pushToolCall(event);
+          } else {
+            updateToolCall(event.toolName, event.status, event.summary);
+          }
+          // Detect branch creation from tool calls
+          if (event.toolName === "create_branch" && event.status === "completed") {
+            const branchMatch = event.summary.match(/branch\s+(\S+)/i);
+            if (branchMatch) setWorkingBranch(branchMatch[1]);
+          }
+        }
+      : undefined,
+    onApprovalRequest: isDevBot
+      ? (approval) => {
+          setPendingApproval(approval);
+        }
+      : undefined,
+  }), [conversationId, appendToken, finishGeneration, queryClient, updateTitle, addCitation, isDevBot, pushToolCall, updateToolCall, setPendingApproval, setWorkingBranch]);
 
   // Auto-retry: if the page loaded with an interrupted stream, re-send
   const retriedRef = useRef(false);
@@ -76,10 +114,33 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
     setAbortController(controller);
   }, [shouldRetry]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleApprove = useCallback(() => {
+    setPendingApproval(null);
+    handleSendText("Approved");
+  }, [setPendingApproval]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleReject = useCallback((reason: string) => {
+    setPendingApproval(null);
+    handleSendText(`Rejected: ${reason}`);
+  }, [setPendingApproval]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSendText = useCallback(
+    (content: string) => {
+      addUserMessage(content);
+      startAssistantMessage();
+      if (isDevBot) clearToolCalls();
+      const callbacks = makeCallbacks();
+      const controller = streamChat(conversationId, { content }, callbacks);
+      setAbortController(controller);
+    },
+    [conversationId, addUserMessage, startAssistantMessage, makeCallbacks, setAbortController, isDevBot, clearToolCalls],
+  );
+
   const handleSend = useCallback(
     (content: string, images: File[], options?: { useDocuments?: boolean }) => {
       addUserMessage(content || "[Image]");
       startAssistantMessage();
+      if (isDevBot) clearToolCalls();
 
       const callbacks = makeCallbacks();
 
@@ -114,6 +175,11 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* DevBot header with repo + branch info */}
+      {isDevBot && repo && (
+        <DevBotChatHeader repo={repo} workingBranch={workingBranch} />
+      )}
+
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-3 md:px-4">
         {messages.length === 0 ? (
           <ChatEmptyState onPromptClick={(prompt) => handleSend(prompt, [])} />
@@ -129,6 +195,21 @@ export function ChatView({ conversationId, shouldRetry }: Props) {
                 attachments={msg.attachments}
               />
             ))}
+
+            {/* DevBot: tool call stack */}
+            {isDevBot && toolCallStack.length > 0 && (
+              <ToolCallStack toolCalls={toolCallStack} />
+            )}
+
+            {/* DevBot: approval card */}
+            {isDevBot && pendingApproval && (
+              <ApprovalCard
+                approval={pendingApproval}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                disabled={isGenerating}
+              />
+            )}
           </div>
         )}
       </div>

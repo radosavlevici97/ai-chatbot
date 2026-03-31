@@ -15,6 +15,9 @@ import * as vectorStore from "../services/vector-store.service.js";
 import { ValidationError } from "../lib/errors.js";
 import { log } from "../middleware/logger.js";
 import { env } from "../env.js";
+import { ClaudeDevBotProvider } from "../services/devbot/claude-devbot.provider.js";
+import * as repoService from "../services/devbot/repo.service.js";
+import { setWorkingBranch } from "../services/devbot/conversation-devbot.service.js";
 import type { AppEnv } from "../app.js";
 
 const RAG_SYSTEM_PROMPT = `You are a helpful assistant with access to the user's documents.
@@ -57,6 +60,11 @@ chat.post(
     const input = sendMessageInputSchema.parse(body);
 
     const conv = convService.getConversation(conversationId, userId);
+
+    // ── DevBot mode: use Claude with tool calling ──
+    if (conv.mode === "devbot") {
+      return handleDevBotMessage(c, conv, input.content, userId, requestId);
+    }
 
     convService.addMessage({
       conversationId,
@@ -501,6 +509,147 @@ function streamLLMResponse(c: any, opts: StreamOptions) {
       // as status="streaming". The frontend will detect this and auto-retry.
       if (!completed) {
         // Delete the incomplete placeholder so the retry creates a fresh one
+        convService.deleteMessage(assistantRow.id);
+      }
+      untrackStream(streamController);
+    }
+  });
+}
+
+// ── DevBot message handler ──────────────────────
+async function handleDevBotMessage(
+  c: any,
+  conv: any,
+  content: string,
+  userId: string,
+  requestId: string,
+) {
+  if (!env.ANTHROPIC_API_KEY) {
+    return c.json({ error: "DevBot mode requires ANTHROPIC_API_KEY" }, 503);
+  }
+
+  if (!conv.repoId) {
+    return c.json({ error: "DevBot conversation has no linked repo" }, 400);
+  }
+
+  const repo = repoService.getRepo(conv.repoId, userId);
+  const conversationId = conv.id;
+
+  // Persist user message
+  convService.addMessage({ conversationId, role: "user", content });
+
+  const history = convService.getConversationMessages(conversationId, userId);
+  const llmMessages = history
+    .filter((m) => m.status !== "streaming")
+    .map((m) => ({
+      role: m.role as "user" | "assistant" | "system",
+      content: m.content,
+    }));
+
+  // Create the DevBot provider with repo context
+  const provider = new ClaudeDevBotProvider(env.ANTHROPIC_API_KEY, {
+    userId,
+    repo,
+    workingBranch: conv.workingBranch,
+    onBranchCreated: (branch: string) => {
+      setWorkingBranch(conversationId, branch);
+    },
+  });
+
+  const streamController = new AbortController();
+  trackStream(streamController);
+
+  const assistantRow = convService.addMessage({
+    conversationId,
+    role: "assistant",
+    content: "",
+    status: "streaming",
+    model: "claude-sonnet",
+  });
+
+  return streamSSE(c, async (stream) => {
+    let fullResponse = "";
+    let completed = false;
+
+    try {
+      for await (const chunk of provider.streamChat(llmMessages)) {
+        switch (chunk.event) {
+          case "token":
+            fullResponse += chunk.content;
+            await stream.writeSSE({
+              event: "token",
+              data: JSON.stringify({ content: chunk.content, finishReason: null }),
+            });
+            break;
+
+          case "tool_call":
+            await stream.writeSSE({
+              event: "tool_call",
+              data: JSON.stringify({
+                toolName: chunk.toolName,
+                status: chunk.status,
+                summary: chunk.summary,
+              }),
+            });
+            break;
+
+          case "approval_request":
+            await stream.writeSSE({
+              event: "approval_request",
+              data: JSON.stringify({
+                fixDescription: chunk.fixDescription,
+                files: chunk.files,
+              }),
+            });
+            break;
+
+          case "done":
+            await stream.writeSSE({
+              event: "done",
+              data: JSON.stringify({
+                finishReason: chunk.finishReason,
+                usage: chunk.usage,
+              }),
+            });
+            break;
+
+          case "error":
+            await stream.writeSSE({
+              event: "error",
+              data: JSON.stringify({
+                error: chunk.error,
+                code: chunk.code,
+                requestId,
+              }),
+            });
+            break;
+        }
+      }
+
+      // Finalize
+      if (fullResponse) {
+        convService.completeMessage(assistantRow.id, fullResponse, "claude-sonnet");
+        completed = true;
+
+        // Auto-generate title on first exchange
+        if (history.length <= 1 && !conv.title) {
+          try {
+            const title = await generateTitle(content, requestId);
+            convService.updateConversation(conversationId, userId, { title });
+            await stream.writeSSE({
+              event: "title",
+              data: JSON.stringify({ title }),
+            });
+          } catch (err) {
+            log.warn({ requestId, conversationId, err: (err as Error).message }, "Auto-title failed");
+          }
+        }
+      } else {
+        convService.deleteMessage(assistantRow.id);
+        completed = true;
+      }
+    } finally {
+      if (!completed) {
         convService.deleteMessage(assistantRow.id);
       }
       untrackStream(streamController);

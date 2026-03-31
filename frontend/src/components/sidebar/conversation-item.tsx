@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Pencil, Trash2, MessageSquare } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, MessageSquare, Code2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -77,7 +77,11 @@ export function ConversationItem({ conversation, isActive }: Props) {
         className="flex flex-1 items-center gap-2 truncate"
         aria-current={isActive ? "page" : undefined}
       >
-        <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
+        {conversation.mode === "devbot" ? (
+          <Code2 className="h-4 w-4 shrink-0 text-primary" />
+        ) : (
+          <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
         <span className="truncate">
           {conversation.title ?? "Untitled"}
         </span>

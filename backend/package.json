@@ -13,6 +13,7 @@
     "seed": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.81.0",
     "@chatbot/shared": "workspace:*",
     "@google/genai": "^1.0.0",
     "@hono/node-server": "^1.14.0",
@@ -26,6 +27,7 @@
     "jose": "^6.0.0",
     "mammoth": "^1.11.0",
     "nanoid": "^5.0.0",
+    "octokit": "^5.0.5",
     "pdf-parse": "^2.4.5",
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, PanelLeftClose, PanelLeftOpen, FileText, X } from "lucide-react";
+import { Plus, PanelLeftClose, PanelLeftOpen, FileText, X, Code2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores/ui-store";
 import { useChatStore } from "@/stores/chat-store";
@@ -164,6 +164,16 @@ function SidebarContent({
           <Plus className="mr-1 h-4 w-4" />
           New chat
         </Button>
+      </div>
+
+      <div className="px-2 pb-1">
+        <a
+          href="/devbot"
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <Code2 className="h-4 w-4" />
+          DevBot
+        </a>
       </div>
 
       <ConversationList

@@ -22,4 +22,6 @@ export type StreamChunk =
   | { event: "error"; error: string; code?: string }
   | { event: "title"; title: string }
   | { event: "citation"; source: string; page: number; relevance: number }
-  | { event: "info"; message: string };
+  | { event: "info"; message: string }
+  | { event: "tool_call"; toolName: string; status: "running" | "completed" | "failed"; summary: string }
+  | { event: "approval_request"; fixDescription: string; files: { path: string; diff: string }[] };
