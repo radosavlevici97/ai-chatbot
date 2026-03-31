@@ -17,6 +17,7 @@ export interface DevBotSettings {
 }
 
 export interface ToolCallEvent {
+  callId: string;
   toolName: string;
   status: "running" | "completed" | "failed";
   summary: string;

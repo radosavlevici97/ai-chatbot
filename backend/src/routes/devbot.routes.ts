@@ -22,7 +22,8 @@ const devbotLimiter = rateLimit("devbot", {
 });
 
 // Middleware: check that devbot mode is available
-function requireDevBot(c: any, next: any) {
+import type { Context, Next } from "hono";
+function requireDevBot(c: Context<AppEnv>, next: Next) {
   if (!env.ANTHROPIC_API_KEY) {
     throw new AppError(503, "DEVBOT_UNAVAILABLE", "DevBot mode requires ANTHROPIC_API_KEY to be configured");
   }

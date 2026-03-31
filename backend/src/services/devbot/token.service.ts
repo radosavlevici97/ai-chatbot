@@ -31,8 +31,9 @@ export async function saveToken(
   const { data: user, headers } = await octokit.rest.users.getAuthenticated();
   const scopes = (headers["x-oauth-scopes"] as string) ?? "";
 
-  // Check for required 'repo' scope
-  if (!scopes.includes("repo")) {
+  // Check for required 'repo' scope (exact match, not substring)
+  const scopeList = scopes.split(",").map((s) => s.trim());
+  if (!scopeList.includes("repo")) {
     throw new Error("Token needs the 'repo' scope to access repositories");
   }
 

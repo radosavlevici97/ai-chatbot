@@ -146,7 +146,7 @@ export class ClaudeDevBotProvider implements LLMProvider {
         // Execute each tool and build tool results
         const toolResults: any[] = [];
         for (const tu of toolUseBlocks) {
-          const result = await executeTool(tu.name, tu.input, toolCtx);
+          const result = await executeTool(tu.name, tu.input, toolCtx, tu.id);
 
           // Emit tool call events to the SSE stream
           for (const evt of result.events) {

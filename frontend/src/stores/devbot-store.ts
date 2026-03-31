@@ -19,7 +19,7 @@ type DevBotState = {
   setSelectedRepo: (repo: Repo | null) => void;
   setWorkingBranch: (branch: string | null) => void;
   pushToolCall: (event: ToolCallEvent) => void;
-  updateToolCall: (toolName: string, status: ToolCallEvent["status"], summary?: string) => void;
+  updateToolCall: (callId: string, status: ToolCallEvent["status"], summary?: string) => void;
   clearToolCalls: () => void;
   setPendingApproval: (approval: ApprovalRequest | null) => void;
   setHasToken: (has: boolean) => void;
@@ -44,10 +44,10 @@ export const useDevBotStore = create<DevBotState>((set) => ({
   pushToolCall: (event) =>
     set((s) => ({ toolCallStack: [...s.toolCallStack, event] })),
 
-  updateToolCall: (toolName, status, summary) =>
+  updateToolCall: (callId, status, summary) =>
     set((s) => ({
       toolCallStack: s.toolCallStack.map((tc) =>
-        tc.toolName === toolName && tc.status === "running"
+        tc.callId === callId && tc.status === "running"
           ? { ...tc, status, ...(summary ? { summary } : {}) }
           : tc,
       ),

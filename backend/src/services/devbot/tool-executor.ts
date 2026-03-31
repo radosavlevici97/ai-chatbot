@@ -18,15 +18,13 @@ export interface ToolResult {
 }
 
 type ToolInput = Record<string, any>;
+type ToolHandler = (input: ToolInput, ctx: ToolContext, callId: string) => Promise<ToolResult>;
 
-const toolHandlers: Record<
-  string,
-  (input: ToolInput, ctx: ToolContext) => Promise<ToolResult>
-> = {
-  read_file: async (input, ctx) => {
+const toolHandlers: Record<string, ToolHandler> = {
+  read_file: async (input, ctx, callId) => {
     const { path } = input as { path: string };
     const events: StreamChunk[] = [
-      { event: "tool_call", toolName: "read_file", status: "running", summary: `Reading ${path}...` },
+      { event: "tool_call", callId, toolName: "read_file", status: "running", summary: `Reading ${path}...` },
     ];
 
     try {
@@ -39,6 +37,7 @@ const toolHandlers: Record<
       );
       events.push({
         event: "tool_call",
+        callId,
         toolName: "read_file",
         status: "completed",
         summary: `Read ${path} (${file.size} bytes)`,
@@ -52,15 +51,15 @@ const toolHandlers: Record<
       return { success: true, output: content, events };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      events.push({ event: "tool_call", toolName: "read_file", status: "failed", summary: `Failed to read ${path}: ${msg}` });
+      events.push({ event: "tool_call", callId, toolName: "read_file", status: "failed", summary: `Failed to read ${path}: ${msg}` });
       return { success: false, output: msg, events };
     }
   },
 
-  list_files: async (input, ctx) => {
+  list_files: async (input, ctx, callId) => {
     const { path } = input as { path: string };
     const events: StreamChunk[] = [
-      { event: "tool_call", toolName: "list_files", status: "running", summary: `Listing ${path || "/"}...` },
+      { event: "tool_call", callId, toolName: "list_files", status: "running", summary: `Listing ${path || "/"}...` },
     ];
 
     try {
@@ -73,27 +72,28 @@ const toolHandlers: Record<
       );
       events.push({
         event: "tool_call",
+        callId,
         toolName: "list_files",
         status: "completed",
         summary: `Listed ${files.length} items in ${path || "/"}`,
       });
 
       const output = files
-        .map((f) => `${f.type === "dir" ? "📁" : "📄"} ${f.path}${f.type === "dir" ? "/" : ""} (${f.size}b)`)
+        .map((f) => `${f.type === "dir" ? "[dir]" : "[file]"} ${f.path}${f.type === "dir" ? "/" : ""} (${f.size}b)`)
         .join("\n");
 
       return { success: true, output, events };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      events.push({ event: "tool_call", toolName: "list_files", status: "failed", summary: `Failed: ${msg}` });
+      events.push({ event: "tool_call", callId, toolName: "list_files", status: "failed", summary: `Failed: ${msg}` });
       return { success: false, output: msg, events };
     }
   },
 
-  create_branch: async (input, ctx) => {
+  create_branch: async (input, ctx, callId) => {
     const { branchName } = input as { branchName: string };
     const events: StreamChunk[] = [
-      { event: "tool_call", toolName: "create_branch", status: "running", summary: `Creating branch ${branchName}...` },
+      { event: "tool_call", callId, toolName: "create_branch", status: "running", summary: `Creating branch ${branchName}...` },
     ];
 
     try {
@@ -107,6 +107,7 @@ const toolHandlers: Record<
       ctx.setWorkingBranch(branchName);
       events.push({
         event: "tool_call",
+        callId,
         toolName: "create_branch",
         status: "completed",
         summary: `Created branch ${branchName}`,
@@ -114,24 +115,24 @@ const toolHandlers: Record<
       return { success: true, output: `Branch '${branchName}' created from '${ctx.repo.defaultBranch}'.`, events };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      events.push({ event: "tool_call", toolName: "create_branch", status: "failed", summary: `Failed: ${msg}` });
+      events.push({ event: "tool_call", callId, toolName: "create_branch", status: "failed", summary: `Failed: ${msg}` });
       return { success: false, output: msg, events };
     }
   },
 
-  write_fix: async (input, ctx) => {
+  write_fix: async (input, ctx, callId) => {
     const { files, commitMessage } = input as { files: { path: string; content: string }[]; commitMessage: string };
     const branch = ctx.workingBranch;
     if (!branch) {
       return {
         success: false,
         output: "No working branch set. Call create_branch first.",
-        events: [{ event: "tool_call" as const, toolName: "write_fix", status: "failed" as const, summary: "No working branch" }],
+        events: [{ event: "tool_call" as const, callId, toolName: "write_fix", status: "failed" as const, summary: "No working branch" }],
       };
     }
 
     const events: StreamChunk[] = [
-      { event: "tool_call", toolName: "write_fix", status: "running", summary: `Pushing ${files.length} file(s)...` },
+      { event: "tool_call", callId, toolName: "write_fix", status: "running", summary: `Pushing ${files.length} file(s)...` },
     ];
 
     try {
@@ -145,6 +146,7 @@ const toolHandlers: Record<
       );
       events.push({
         event: "tool_call",
+        callId,
         toolName: "write_fix",
         status: "completed",
         summary: `Pushed ${files.length} file(s) to ${branch}`,
@@ -156,18 +158,18 @@ const toolHandlers: Record<
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      events.push({ event: "tool_call", toolName: "write_fix", status: "failed", summary: `Failed: ${msg}` });
+      events.push({ event: "tool_call", callId, toolName: "write_fix", status: "failed", summary: `Failed: ${msg}` });
       return { success: false, output: msg, events };
     }
   },
 
-  deploy: async (_input, ctx) => {
+  deploy: async (_input, ctx, callId) => {
     const branch = ctx.workingBranch;
     if (!branch) {
       return {
         success: false,
         output: "No working branch set. Call create_branch first.",
-        events: [{ event: "tool_call" as const, toolName: "deploy", status: "failed" as const, summary: "No working branch" }],
+        events: [{ event: "tool_call" as const, callId, toolName: "deploy", status: "failed" as const, summary: "No working branch" }],
       };
     }
 
@@ -176,12 +178,12 @@ const toolHandlers: Record<
       return {
         success: false,
         output: "No Firebase project linked to this repo. Configure it in repo settings.",
-        events: [{ event: "tool_call" as const, toolName: "deploy", status: "failed" as const, summary: "No Firebase project" }],
+        events: [{ event: "tool_call" as const, callId, toolName: "deploy", status: "failed" as const, summary: "No Firebase project" }],
       };
     }
 
     const events: StreamChunk[] = [
-      { event: "tool_call", toolName: "deploy", status: "running", summary: "Deploying to Firebase preview..." },
+      { event: "tool_call", callId, toolName: "deploy", status: "running", summary: "Deploying to Firebase preview..." },
     ];
 
     const result = await firebaseService.deployPreview(projectId, branch);
@@ -189,6 +191,7 @@ const toolHandlers: Record<
     if (result.status === "deployed") {
       events.push({
         event: "tool_call",
+        callId,
         toolName: "deploy",
         status: "completed",
         summary: `Deployed! Preview: ${result.previewUrl ?? "URL pending"}`,
@@ -200,23 +203,23 @@ const toolHandlers: Record<
       };
     }
 
-    events.push({ event: "tool_call", toolName: "deploy", status: "failed", summary: `Deploy failed: ${result.error}` });
+    events.push({ event: "tool_call", callId, toolName: "deploy", status: "failed", summary: `Deploy failed: ${result.error}` });
     return { success: false, output: result.error ?? "Deploy failed", events };
   },
 
-  open_pr: async (input, ctx) => {
+  open_pr: async (input, ctx, callId) => {
     const { title, body } = input as { title: string; body: string };
     const branch = ctx.workingBranch;
     if (!branch) {
       return {
         success: false,
         output: "No working branch set. Call create_branch first.",
-        events: [{ event: "tool_call" as const, toolName: "open_pr", status: "failed" as const, summary: "No working branch" }],
+        events: [{ event: "tool_call" as const, callId, toolName: "open_pr", status: "failed" as const, summary: "No working branch" }],
       };
     }
 
     const events: StreamChunk[] = [
-      { event: "tool_call", toolName: "open_pr", status: "running", summary: "Opening pull request..." },
+      { event: "tool_call", callId, toolName: "open_pr", status: "running", summary: "Opening pull request..." },
     ];
 
     try {
@@ -231,6 +234,7 @@ const toolHandlers: Record<
       );
       events.push({
         event: "tool_call",
+        callId,
         toolName: "open_pr",
         status: "completed",
         summary: `Opened PR #${pr.number}`,
@@ -242,7 +246,7 @@ const toolHandlers: Record<
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      events.push({ event: "tool_call", toolName: "open_pr", status: "failed", summary: `Failed: ${msg}` });
+      events.push({ event: "tool_call", callId, toolName: "open_pr", status: "failed", summary: `Failed: ${msg}` });
       return { success: false, output: msg, events };
     }
   },
@@ -252,16 +256,17 @@ export async function executeTool(
   toolName: string,
   input: ToolInput,
   ctx: ToolContext,
+  callId: string,
 ): Promise<ToolResult> {
   const handler = toolHandlers[toolName];
   if (!handler) {
     return {
       success: false,
       output: `Unknown tool: ${toolName}`,
-      events: [{ event: "tool_call", toolName, status: "failed", summary: `Unknown tool: ${toolName}` }],
+      events: [{ event: "tool_call", callId, toolName, status: "failed", summary: `Unknown tool: ${toolName}` }],
     };
   }
 
-  log.info({ toolName, input }, "Executing devbot tool");
-  return handler(input, ctx);
+  log.info({ toolName, callId, input }, "Executing devbot tool");
+  return handler(input, ctx, callId);
 }

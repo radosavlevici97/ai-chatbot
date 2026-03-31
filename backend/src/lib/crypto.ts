@@ -26,7 +26,11 @@ export function encrypt(plaintext: string): string {
 
 export function decrypt(encryptedStr: string): string {
   const key = getKey();
-  const [ivHex, authTagHex, ciphertextHex] = encryptedStr.split(":");
+  const parts = encryptedStr.split(":");
+  if (parts.length !== 3) {
+    throw new Error("Invalid encrypted token format");
+  }
+  const [ivHex, authTagHex, ciphertextHex] = parts;
 
   const iv = Buffer.from(ivHex, "hex");
   const authTag = Buffer.from(authTagHex, "hex");

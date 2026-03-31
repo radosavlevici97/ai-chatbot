@@ -87,7 +87,7 @@ export function ChatView({ conversationId, shouldRetry, mode = "chat", repo }: P
           if (event.status === "running") {
             pushToolCall(event);
           } else {
-            updateToolCall(event.toolName, event.status, event.summary);
+            updateToolCall(event.callId, event.status, event.summary);
           }
           // Detect branch creation from tool calls
           if (event.toolName === "create_branch" && event.status === "completed") {

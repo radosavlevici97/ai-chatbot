@@ -1,19 +1,29 @@
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { log } from "../../middleware/logger.js";
 import type { DeployStatus } from "@chatbot/shared";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+const PROJECT_ID_RE = /^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/;
+
+function validateProjectId(projectId: string): void {
+  if (!PROJECT_ID_RE.test(projectId)) {
+    throw new Error(`Invalid Firebase project ID: ${projectId}`);
+  }
+}
 
 export async function deployPreview(
   projectId: string,
   branch: string,
 ): Promise<DeployStatus> {
+  validateProjectId(projectId);
   const channelId = sanitizeChannelId(branch);
 
   try {
-    const { stdout, stderr } = await execAsync(
-      `firebase hosting:channel:deploy ${channelId} --project ${projectId} --json`,
+    const { stdout } = await execFileAsync(
+      "firebase",
+      ["hosting:channel:deploy", channelId, "--project", projectId, "--json"],
       { timeout: 120_000 },
     );
 
@@ -53,11 +63,13 @@ export async function getDeployStatus(
   projectId: string,
   branch: string,
 ): Promise<DeployStatus> {
+  validateProjectId(projectId);
   const channelId = sanitizeChannelId(branch);
 
   try {
-    const { stdout } = await execAsync(
-      `firebase hosting:channel:list --project ${projectId} --json`,
+    const { stdout } = await execFileAsync(
+      "firebase",
+      ["hosting:channel:list", "--project", projectId, "--json"],
       { timeout: 30_000 },
     );
 

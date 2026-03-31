@@ -586,6 +586,7 @@ async function handleDevBotMessage(
             await stream.writeSSE({
               event: "tool_call",
               data: JSON.stringify({
+                callId: chunk.callId,
                 toolName: chunk.toolName,
                 status: chunk.status,
                 summary: chunk.summary,
