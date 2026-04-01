@@ -67,15 +67,23 @@ export class ClaudeDevBotProvider implements LLMProvider {
       toolRound++;
 
       // Stream the response from Claude
-      const response = await this.client.messages.create({
-        model: options?.model ?? CLAUDE_MODEL,
-        max_tokens: options?.maxTokens ?? 4096,
-        temperature: options?.temperature ?? 0.7,
-        system: systemPrompt,
-        tools: devbotTools,
-        messages: currentMessages,
-        stream: true,
-      });
+      let response;
+      try {
+        response = await this.client.messages.create({
+          model: options?.model ?? CLAUDE_MODEL,
+          max_tokens: options?.maxTokens ?? 4096,
+          temperature: options?.temperature ?? 0.7,
+          system: systemPrompt,
+          tools: devbotTools,
+          messages: currentMessages,
+          stream: true,
+        });
+      } catch (err: any) {
+        const message = err?.error?.error?.message ?? err?.message ?? "Claude API request failed";
+        log.error({ err: message }, "Claude DevBot API error");
+        yield { event: "error" as const, error: message, code: "LLM_ERROR" };
+        return;
+      }
 
       let textContent = "";
       const toolUseBlocks: { id: string; name: string; input: any }[] = [];

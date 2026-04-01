@@ -19,18 +19,19 @@ import type {
 
 export const conversationKeys = {
   all: ["conversations"] as const,
-  list: () => [...conversationKeys.all, "list"] as const,
+  list: (mode?: string) => [...conversationKeys.all, "list", mode ?? "all"] as const,
   detail: (id: string) => [...conversationKeys.all, "detail", id] as const,
 };
 
 // ── List conversations (infinite scroll / cursor pagination) ──
 
-export function useConversations() {
+export function useConversations(mode?: "chat" | "devbot") {
   return useInfiniteQuery({
-    queryKey: conversationKeys.list(),
+    queryKey: conversationKeys.list(mode),
     queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
       const params = new URLSearchParams();
       if (pageParam) params.set("cursor", pageParam);
+      if (mode) params.set("mode", mode);
       params.set("limit", "20");
       return api.get<PaginatedResponse<ConversationListItem>>(
         `/conversations?${params.toString()}`,
@@ -61,7 +62,7 @@ export function useCreateConversation() {
     mutationFn: (input: CreateConversationInput) =>
       api.post<Conversation>("/conversations", input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+      queryClient.invalidateQueries({ queryKey: conversationKeys.all });
     },
   });
 }
@@ -75,7 +76,7 @@ export function useRenameConversation() {
     mutationFn: ({ id, title }: { id: string; title: string }) =>
       api.put<Conversation>(`/conversations/${id}`, { title }),
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+      queryClient.invalidateQueries({ queryKey: conversationKeys.all });
       queryClient.invalidateQueries({ queryKey: conversationKeys.detail(id) });
     },
   });
@@ -89,7 +90,7 @@ export function useDeleteConversation() {
   return useMutation({
     mutationFn: (id: string) => api.delete<{ deleted: boolean }>(`/conversations/${id}`),
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+      queryClient.invalidateQueries({ queryKey: conversationKeys.all });
       queryClient.removeQueries({ queryKey: conversationKeys.detail(id) });
     },
   });
@@ -102,7 +103,7 @@ export function useUpdateConversationTitle() {
 
   return (id: string, title: string) => {
     queryClient.setQueriesData(
-      { queryKey: conversationKeys.list() },
+      { queryKey: conversationKeys.all },
       (old: unknown) => {
         const data = old as { pages: PaginatedResponse<ConversationListItem>[] } | undefined;
         if (!data?.pages) return old;

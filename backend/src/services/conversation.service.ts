@@ -22,7 +22,7 @@ export function createConversation(
   const id = nanoid();
 
   db.insert(conversations)
-    .values({ id, userId: input.userId, title: input.title, model: input.model, systemPrompt: input.systemPrompt })
+    .values({ id, userId: input.userId, title: input.title, model: input.model, systemPrompt: input.systemPrompt, mode: input.mode, repoId: input.repoId })
     .run();
 
   log.info({ requestId, conversationId: id, userId: input.userId }, "Conversation created");
@@ -36,7 +36,11 @@ export function listConversations(
   userId: string,
   pagination: PaginationInput,
 ): PaginatedResponse<ConversationListItem> {
-  const { cursor, limit } = pagination;
+  const { cursor, limit, mode } = pagination;
+
+  const conditions = [eq(conversations.userId, userId)];
+  if (cursor) conditions.push(lt(conversations.updatedAt, cursor));
+  if (mode) conditions.push(eq(conversations.mode, mode));
 
   const rows = db
     .select({
@@ -49,11 +53,7 @@ export function listConversations(
       createdAt: conversations.createdAt,
     })
     .from(conversations)
-    .where(
-      cursor
-        ? and(eq(conversations.userId, userId), lt(conversations.updatedAt, cursor))
-        : eq(conversations.userId, userId),
-    )
+    .where(and(...conditions))
     .orderBy(desc(conversations.updatedAt))
     .limit(limit + 1)
     .all();

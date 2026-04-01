@@ -52,7 +52,7 @@ export function ConversationList({
 }: Props) {
   if (isLoading) {
     return (
-      <div className="flex-1">
+      <div>
         <SidebarSkeleton />
       </div>
     );
@@ -60,7 +60,7 @@ export function ConversationList({
 
   if (conversations.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-4 text-sm text-muted-foreground">
+      <div className="px-4 py-3 text-xs text-muted-foreground">
         No conversations yet
       </div>
     );
@@ -69,7 +69,7 @@ export function ConversationList({
   const groups = groupByDate(conversations);
 
   return (
-    <nav className="flex-1 overflow-y-auto px-2 pb-4">
+    <nav className="px-2 pb-2">
       {groups.map((group) => (
         <div key={group.label}>
           <p className="px-2 pt-4 pb-1 text-xs font-medium text-muted-foreground">

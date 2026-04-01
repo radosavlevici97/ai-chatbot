@@ -248,6 +248,11 @@ chat.post(
       return c.json({ error: "Last message is not from user" }, 400);
     }
 
+    // DevBot mode: retry via Claude with tool calling
+    if (conv.mode === "devbot") {
+      return handleDevBotMessage(c, conv, lastMessage.content, userId, requestId);
+    }
+
     const llmMessages = buildContextMessages(
       history.map((m) => ({ role: m.role as "user" | "assistant" | "system", content: m.content })),
       conv.systemPrompt,

@@ -106,7 +106,7 @@ export function useCreateDevBotConversation() {
     mutationFn: (input: CreateDevBotConversationInput) =>
       api.post<Conversation>("/conversations", { ...input, mode: "devbot" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+      queryClient.invalidateQueries({ queryKey: conversationKeys.list("devbot") });
     },
   });
 }

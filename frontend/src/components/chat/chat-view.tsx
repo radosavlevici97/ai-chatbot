@@ -64,7 +64,7 @@ export function ChatView({ conversationId, shouldRetry, mode = "chat", repo }: P
     onToken: (token) => appendToken(token),
     onDone: () => {
       finishGeneration();
-      queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+      queryClient.invalidateQueries({ queryKey: conversationKeys.all });
     },
     onError: (error, code) => {
       finishGeneration();

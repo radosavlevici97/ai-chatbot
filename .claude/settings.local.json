@@ -39,7 +39,11 @@
       "WebFetch(domain:api.github.com)",
       "Bash(git -C \"C:\\\\Users\\\\Calin\\\\Documents\\\\ai-chatbot\" config user.email \"radosavlevici97@users.noreply.github.com\")",
       "WebFetch(domain:ai-chatbot-production-el4a.up.railway.app)",
-      "Bash(find ./frontend/src/components/devbot -name *.tsx -exec wc -l {} +)"
+      "Bash(find ./frontend/src/components/devbot -name *.tsx -exec wc -l {} +)",
+      "Bash(find /c/Users/Calin/Documents/ai-chatbot/frontend/src/app -name devbot -o -name *devbot*)",
+      "Bash(ls -la /c/Users/Calin/Documents/ai-chatbot/frontend/src/app/\\\\\\(chat\\\\\\)/devbot/)",
+      "Bash(grep -A2 '\"\"dev\"\"' backend/package.json)",
+      "Bash(node -e \":*)"
     ]
   }
 }

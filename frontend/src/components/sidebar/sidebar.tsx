@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, PanelLeftClose, PanelLeftOpen, FileText, X, Code2 } from "lucide-react";
+import Link from "next/link";
+import { Plus, PanelLeftClose, PanelLeftOpen, FileText, X, Code2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores/ui-store";
 import { useChatStore } from "@/stores/chat-store";
@@ -11,7 +12,6 @@ import { ConversationList } from "./conversation-list";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { UserMenu } from "./user-menu";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import type { ConversationListItem } from "@chatbot/shared";
 
 export function Sidebar() {
   const router = useRouter();
@@ -30,31 +30,19 @@ export function Sidebar() {
     if (isMobile) setSidebarOpen(false);
   }, [pathname, isMobile, setSidebarOpen]);
 
-  const {
-    data,
-    isLoading,
-    hasNextPage,
-    fetchNextPage,
-    isFetchingNextPage,
-  } = useConversations();
-
-  const conversations = data?.pages.flatMap((page) => page.data) ?? [];
-
   // Determine if we're already on the new-chat page
   const isOnNewChat = pathname === "/" || pathname === "";
 
   const handleNewChat = () => {
     if (isOnNewChat) return;
-
-    // Clear chat store so the new-chat page starts fresh
     useChatStore.getState().clearMessages();
-
     router.push("/");
     if (isMobile) setSidebarOpen(false);
   };
 
+  const activeId = pathname.split("/c/")[1];
+
   // On mobile, sidebar is only shown as overlay (controlled by MobileHeader)
-  // No collapsed toggle bar needed on mobile
   if (isMobile) {
     if (!sidebarOpen) return null;
 
@@ -66,12 +54,7 @@ export function Sidebar() {
         />
         <aside className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r bg-background shadow-lg pb-safe">
           <SidebarContent
-            conversations={conversations}
-            isLoading={isLoading}
-            activeId={pathname.split("/c/")[1]}
-            hasNextPage={hasNextPage ?? false}
-            isFetchingNextPage={isFetchingNextPage}
-            onLoadMore={() => fetchNextPage()}
+            activeId={activeId}
             onNewChat={handleNewChat}
             onClose={() => setSidebarOpen(false)}
             onToggle={toggleSidebar}
@@ -98,12 +81,7 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-64 flex-col border-r bg-muted/40">
       <SidebarContent
-        conversations={conversations}
-        isLoading={isLoading}
-        activeId={pathname.split("/c/")[1]}
-        hasNextPage={hasNextPage ?? false}
-        isFetchingNextPage={isFetchingNextPage}
-        onLoadMore={() => fetchNextPage()}
+        activeId={activeId}
         onNewChat={handleNewChat}
         onClose={() => setSidebarOpen(false)}
         onToggle={toggleSidebar}
@@ -117,12 +95,7 @@ export function Sidebar() {
 // ── Inner content (shared between mobile overlay and desktop) ──
 
 type SidebarContentProps = {
-  conversations: ConversationListItem[];
-  isLoading: boolean;
   activeId?: string;
-  hasNextPage: boolean;
-  isFetchingNextPage: boolean;
-  onLoadMore: () => void;
   onNewChat: () => void;
   onClose: () => void;
   onToggle: () => void;
@@ -131,20 +104,30 @@ type SidebarContentProps = {
 };
 
 function SidebarContent({
-  conversations,
-  isLoading,
   activeId,
-  hasNextPage,
-  isFetchingNextPage,
-  onLoadMore,
   onNewChat,
   onClose,
   onToggle,
   isNewChatDisabled,
   isMobile,
 }: SidebarContentProps) {
+  const router = useRouter();
+  const { sidebarTab, setSidebarTab } = useUIStore();
+
+  const activeQuery = useConversations(sidebarTab);
+  const conversations = activeQuery.data?.pages.flatMap((page) => page.data) ?? [];
+
+  const handleNewAction = () => {
+    if (sidebarTab === "chat") {
+      onNewChat();
+    } else {
+      router.push("/devbot");
+    }
+  };
+
   return (
     <>
+      {/* Header */}
       <div className="flex items-center justify-between p-3">
         {isMobile ? (
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close menu">
@@ -155,44 +138,61 @@ function SidebarContent({
             <PanelLeftClose className="h-5 w-5" />
           </Button>
         )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onNewChat}
-          disabled={isNewChatDisabled}
-        >
-          <Plus className="mr-1 h-4 w-4" />
-          New chat
-        </Button>
+
+        {/* Tab buttons + New button */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant={sidebarTab === "chat" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-8 px-2.5 text-xs"
+            onClick={() => setSidebarTab("chat")}
+          >
+            <MessageSquare className="mr-1 h-3.5 w-3.5" />
+            Chat
+          </Button>
+          <Button
+            variant={sidebarTab === "devbot" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-8 px-2.5 text-xs"
+            onClick={() => setSidebarTab("devbot")}
+          >
+            <Code2 className="mr-1 h-3.5 w-3.5" />
+            Dev
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleNewAction}
+            disabled={sidebarTab === "chat" && isNewChatDisabled}
+            title={sidebarTab === "chat" ? "New chat" : "New DevBot session"}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      <div className="px-2 pb-1">
-        <a
-          href="/devbot"
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <Code2 className="h-4 w-4" />
-          DevBot
-        </a>
+      {/* Conversation list for active tab */}
+      <div className="flex flex-1 flex-col overflow-y-auto">
+        <ConversationList
+          conversations={conversations}
+          activeId={activeId}
+          isLoading={activeQuery.isLoading}
+          hasNextPage={activeQuery.hasNextPage ?? false}
+          isFetchingNextPage={activeQuery.isFetchingNextPage}
+          onLoadMore={() => activeQuery.fetchNextPage()}
+        />
       </div>
 
-      <ConversationList
-        conversations={conversations}
-        activeId={activeId}
-        isLoading={isLoading}
-        hasNextPage={hasNextPage}
-        isFetchingNextPage={isFetchingNextPage}
-        onLoadMore={onLoadMore}
-      />
-
+      {/* Footer */}
       <div className="border-t p-2">
-        <a
+        <Link
           href="/documents"
           className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <FileText className="h-4 w-4" />
           Documents
-        </a>
+        </Link>
       </div>
       <div className="border-t p-2">
         <div className="flex items-center justify-between">
